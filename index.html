@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -351,10 +351,10 @@
 const ALL_PATTERNS = [
   // ---------- 多词组合（长词优先匹配）----------
   { word: '金融诈骗嫌疑', replacement: null, type: 'high' },
-  { word: '满分状元学霸', replacement: '优秀学生', type: 'replace' },
+  { word: '满分状元学霸', replacement: '前列学生', type: 'replace' },
   { word: '金融诈骗', replacement: null, type: 'high' },
   { word: '支付宝转账', replacement: null, type: 'high' },
-  { word: '最好第一', replacement: '优质领先', type: 'replace' },
+  { word: '最好第一', replacement: '非常好Top', type: 'replace' },
   { word: '顶级王牌', replacement: '优质精选', type: 'replace' },
   { word: '满分状元', replacement: '高分优秀学生', type: 'replace' },
   { word: '提分学霸', replacement: '提升成绩', type: 'replace' },
@@ -429,12 +429,13 @@ const ALL_PATTERNS = [
   { word: '唯一', replacement: '独一', type: 'replace' },
   { word: '独有', replacement: '特色', type: 'replace' },
   { word: '独家', replacement: '独一份', type: 'replace' },
+  { word: '领先', replacement: '前列', type: 'replace' },
   { word: '高效', replacement: '高质量', type: 'replace' },
   { word: '中心', replacement: '核心', type: 'replace' },
-  { word: '第一', replacement: '领先', type: 'replace' },
+  { word: '第一', replacement: 'Top', type: 'replace' },
   { word: '第二', replacement: '前列', type: 'replace' },
-  { word: '最好', replacement: '极好', type: 'replace' },
-  { word: '最佳', replacement: '极佳', type: 'replace' },
+  { word: '最好', replacement: '非常好', type: 'replace' },
+  { word: '最佳', replacement: '非常好', type: 'replace' },
   { word: '最低', replacement: '至低', type: 'replace' },
   { word: '钱', replacement: 'money', type: 'replace' },
   { word: '赚', replacement: '获得', type: 'replace' },
@@ -803,3 +804,4 @@ document.getElementById('inputArea').addEventListener('input', onInputChange);
 
 </body>
 </html>
+
