@@ -280,13 +280,112 @@
     .panel { min-height: 300px; }
     .divider { width: 100%; height: 4px; }
   }
+  /* OCR识别相关样式 */
+  .ocr-loading {
+    display: none;
+    padding: 12px 16px;
+    background: #f0f4ff;
+    border-top: 1px solid #e0e0e0;
+    font-size: 13px;
+    color: #667eea;
+    align-items: center;
+    gap: 8px;
+  }
+  .ocr-loading.active { display: flex; }
+  .ocr-spinner {
+    width: 16px; height: 16px;
+    border: 2px solid #667eea;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .survey-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 999;
+    padding: 6px 14px;
+    background: rgba(255,255,255,0.92);
+    color: #764ba2;
+    border: 1px solid rgba(118,75,162,0.18);
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transition: all 0.2s;
+    backdrop-filter: blur(8px);
+  }
+  .survey-btn:hover {
+    background: #764ba2;
+    color: white;
+    box-shadow: 0 4px 12px rgba(118,75,162,0.25);
+    transform: translateY(-1px);
+  }
+
+  .survey-modal .modal-content {
+    max-width: 720px;
+    height: 80vh;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+  }
+  .survey-modal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+  }
+  .survey-modal .modal-header h3 { margin: 0; }
+  .survey-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #999;
+    line-height: 1;
+  }
+  .survey-iframe {
+    flex: 1;
+    width: 100%;
+    border: none;
+    border-radius: 8px;
+  }
+
+  .result-footer {
+    padding: 6px 16px;
+    background: #f8f9fa;
+    border-top: 1px solid #e0e0e0;
+    font-size: 12px;
+    color: #aaa;
+    text-align: left;
+    cursor: text;
+    user-select: text;
+    line-height: 1.6;
+  }
 </style>
+<script src="https://unpkg.com/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
 
+<button class="survey-btn" onclick="openSurvey()">📋 AI工具需求</button>
+
+<div class="modal survey-modal" id="surveyModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>📋 AI工具需求收集</h3>
+      <button class="survey-close" onclick="closeSurvey()">×</button>
+    </div>
+    <iframe class="survey-iframe" id="surveyFrame" src="https://wj.qq.com/s2/26604451/0df6"></iframe>
+  </div>
+</div>
+
 <div class="header">
   <h1>🛡️ 微信敏感词过滤工具</h1>
-  <p>智能识别并替换风险词汇，保护你的内容安全</p>
+  <p>智能识别并替换风险词汇</p>
 </div>
 
 <div class="container">
@@ -306,6 +405,10 @@
         <div class="stat-item"><span class="stat-dot" style="background:#48dbfb"></span> 已替换: <strong id="replaceCount">0</strong></div>
       </div>
     </div>
+    <div class="ocr-loading" id="ocrLoading">
+      <div class="ocr-spinner"></div>
+      <span>OCR识别中，请稍候...</span>
+    </div>
   </div>
 
   <div class="divider" id="divider"></div>
@@ -322,9 +425,11 @@
       <div class="legend-item"><span class="highlight-low" style="padding:2px 6px">橙色</span> 低风险词处理（加空格）</div>
       <div class="legend-item"><span class="highlight-replace" style="padding:2px 6px">蓝色</span> 同义词替换</div>
     </div>
+    <div class="result-footer">
+      若过滤结果不佳，可截图整页+希望的结果，在钉钉发给【Cheng】，工具将持续迭代，感谢使用🙏
+    </div>
     <div class="toolbar">
       <button class="btn btn-primary" onclick="copyResult()">📋 复制结果</button>
-      <button class="btn btn-success" onclick="exportText()">💾 导出文本</button>
       <button class="btn btn-secondary" onclick="showDetail()">📊 查看详情</button>
     </div>
   </div>
@@ -800,6 +905,94 @@ document.getElementById('outputArea').addEventListener('input', function() {
 
 // 绑定输入事件
 document.getElementById('inputArea').addEventListener('input', onInputChange);
+
+// ==================== OCR图片识别 ====================
+
+// 监听输入区粘贴事件，检测图片
+document.getElementById('inputArea').addEventListener('paste', function(e) {
+  const items = e.clipboardData.items;
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf('image') !== -1) {
+      e.preventDefault();
+      const file = items[i].getAsFile();
+      insertImageAndRecognize(file);
+      return;
+    }
+  }
+});
+
+// 插入图片并识别文字
+async function insertImageAndRecognize(file) {
+  const inputArea = document.getElementById('inputArea');
+  const ocrLoading = document.getElementById('ocrLoading');
+
+  // 1. 显示原图
+  const img = document.createElement('img');
+  const objectUrl = URL.createObjectURL(file);
+  img.src = objectUrl;
+  img.style.maxWidth = '100%';
+  img.style.height = 'auto';
+  img.style.marginBottom = '8px';
+  img.alt = '粘贴的图片';
+
+  inputArea.innerHTML = '';
+  inputArea.appendChild(img);
+  inputArea.appendChild(document.createElement('br'));
+
+  const placeholder = document.createElement('span');
+  placeholder.id = 'ocrPlaceholder';
+  placeholder.textContent = '正在识别图片文字...';
+  placeholder.style.color = '#999';
+  inputArea.appendChild(placeholder);
+
+  ocrLoading.classList.add('active');
+
+  try {
+    const result = await Tesseract.recognize(file, 'chi_sim+eng');
+    const text = result.data.text.trim();
+
+    const ph = document.getElementById('ocrPlaceholder');
+    if (ph) ph.remove();
+
+    if (text) {
+      inputArea.appendChild(document.createTextNode(text));
+      processFilter();
+      showToast('✅ 图片文字识别完成', 'success');
+    } else {
+      const errSpan = document.createElement('span');
+      errSpan.textContent = '（未识别到文字）';
+      errSpan.style.color = '#999';
+      inputArea.appendChild(errSpan);
+      showToast('未识别到文字，请确认图片是否清晰', 'error');
+    }
+  } catch (err) {
+    console.error('OCR识别失败：', err);
+    const ph = document.getElementById('ocrPlaceholder');
+    if (ph) {
+      ph.textContent = '识别失败，请重试';
+      ph.style.color = '#ff6b6b';
+    }
+    showToast('识别失败，请重试', 'error');
+  } finally {
+    ocrLoading.classList.remove('active');
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+// ==================== 问卷弹窗 ====================
+
+function openSurvey() {
+  document.getElementById('surveyModal').classList.add('active');
+}
+
+function closeSurvey() {
+  document.getElementById('surveyModal').classList.remove('active');
+}
+
+// 点击模态框外部关闭
+document.getElementById('surveyModal').addEventListener('click', function(e) {
+  if (e.target === this) closeSurvey();
+});
 </script>
 
 </body>
